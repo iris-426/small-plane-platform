@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    FanciSwarm robot macro in Xacro format.
+    Usage: include this file and call <fanciswarm_robot prefix="..."/>
+-->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Define a macro for the FanciSwarm robot -->
+  <xacro:macro name="fanciswarm_robot" params="prefix">
+
+    <link name="${prefix}base_link">
+      <inertial>
+        <origin xyz="-0.00024207 0.00020508 0.0065303" rpy="0 0 0" />
+        <mass value="0.13858" />
+        <inertia
+          ixx="4.1749E-05"
+          ixy="8.3038E-10"
+          ixz="6.1984E-08"
+          iyy="3.6514E-05"
+          iyz="-1.1199E-08"
+          izz="7.1588E-05" />
+      </inertial>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://FanciSwarm_urdf/meshes/base_link.STL" />
+        </geometry>
+        <material name="">
+          <color rgba="0.75294 0.75294 0.75294 1" />
+        </material>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://FanciSwarm_urdf/meshes/base_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+
+  </xacro:macro>
+
+</robot>

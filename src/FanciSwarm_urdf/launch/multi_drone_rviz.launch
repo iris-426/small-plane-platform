@@ -1,0 +1,30 @@
+<!-- multi_drone_rviz.launch -->
+<launch>
+  <!-- Load combined URDF from xacro (three drones) -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find FanciSwarm_urdf)/urdf/multi_fanciswarm.xacro" />
+
+  <!-- Since there are NO joints, joint_state_publisher is optional -->
+  <!-- But if you keep it, use the non-GUI version to avoid pop-up -->
+  <node name="joint_state_publisher"
+        pkg="joint_state_publisher"
+        type="joint_state_publisher"
+        args="--use_gui=false" />
+
+  <!-- Publish all TFs (for fixed links, it just publishes static transforms) -->
+  <node name="robot_state_publisher"
+        pkg="robot_state_publisher"
+        type="robot_state_publisher"
+        respawn="false"
+        output="screen">
+    <param name="publish_frequency" value="50.0"/>
+  </node>
+
+  <!-- Launch RViz with a pre-configured config (you'll need to set this up) -->
+  <node name="rviz"
+        pkg="rviz"
+        type="rviz"
+        args="-d $(find FanciSwarm_urdf)/config/multi_drone.rviz"
+        required="true" />
+
+</launch>

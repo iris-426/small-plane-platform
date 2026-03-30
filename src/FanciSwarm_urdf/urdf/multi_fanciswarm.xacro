@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot name="multi_fanciswarm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find FanciSwarm_urdf)/urdf/fanciswarm_robot.xacro" />
+
+  <!-- Virtual world link -->
+  <link name="world" />
+
+  <!-- Drone 1 -->
+  <joint name="drone1_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone1_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/>
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone1_" />
+
+  <!-- Drone 2 -->
+  <joint name="drone2_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone2_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/> <!-- 1 meter right -->
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone2_" />
+
+  <!-- Drone 3 -->
+  <joint name="drone3_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone3_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/> <!-- 1 meter forward -->
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone3_" />
+  
+  <!-- Drone 4 -->
+  <joint name="drone4_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone4_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/> <!-- 1 meter forward -->
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone4_" />
+  
+  <!-- Drone 5 -->
+  <joint name="drone5_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone5_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/> <!-- 1 meter forward -->
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone5_" />
+  
+  <!-- Drone 6 -->
+  <joint name="drone6_joint" type="fixed">
+    <parent link="world"/>
+    <child link="drone6_base_link"/>
+    <origin xyz="10000 0 0" rpy="0 0 0"/> <!-- 1 meter forward -->
+  </joint>
+  <xacro:fanciswarm_robot prefix="drone6_" />
+
+</robot>
