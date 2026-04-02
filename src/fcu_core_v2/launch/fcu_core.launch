@@ -17,7 +17,7 @@
         <param name="offboard" value="false" type="bool"/>
         <param name="use_uwb" value="false" type="bool"/>
         <param name="set_goal" value="false" type="bool"/>
-        <param name="simple_target" value="true" type="bool"/>
+        <param name="simple_target" value="false" type="bool"/>
         <param name="odom_init_x" value="0.0"/> <!-- FLU坐标系 -->
         <param name="odom_init_y" value="0.0"/>
         <param name="odom_init_z" value="0.0"/>
@@ -38,7 +38,7 @@
         <param name="offboard" value="false" type="bool"/>
         <param name="use_uwb" value="false" type="bool"/>
         <param name="set_goal" value="false" type="bool"/>
-        <param name="simple_target" value="true" type="bool"/>
+        <param name="simple_target" value="false" type="bool"/>
     </node>
     <node pkg="fcu_core" type="fcu_bridge_003" name="fcu_bridge_003" output="screen" >
         <remap from="~odometry_003" to="odometry_003"/>
@@ -56,7 +56,7 @@
         <param name="offboard" value="false" type="bool"/>
         <param name="use_uwb" value="false" type="bool"/>
         <param name="set_goal" value="false" type="bool"/>
-        <param name="simple_target" value="true" type="bool"/>
+        <param name="simple_target" value="false" type="bool"/>
     </node>
     <node pkg="fcu_core" type="fcu_bridge_004" name="fcu_bridge_004" output="screen" >
         <remap from="~odometry_004" to="odometry_004"/>

@@ -570,7 +570,7 @@ int main(int argc, char **argv) {
   command = nh.advertise<std_msgs::Int16>("command",100);
   path_target_pub = nh.advertise<nav_msgs::Path>("path_target_001", 100);
 
-  uwb = nh.advertise<fcu_core::uwb>("uwb_dis_001",10);//uwb添加
+  uwb = nh.advertise<fcu_core::uwb>("uwb_dis",10);//uwb添加
 
 
   ros::Duration(1.0).sleep();
