@@ -1,0 +1,8 @@
+prefix=/home/ubuntu/fcu_ws/devel
+
+Name: FanciSwarm_urdf
+Description: Description of FanciSwarm_urdf
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

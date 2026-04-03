@@ -389,6 +389,7 @@ void update_capabilities() {
 static ros::Publisher mission_pubs[6];// 6个任务话题的发布者数组
 // 核心模板：统一提取数据并发布的逻辑
 void process_mission(int index) {
+    ROS_INFO("Timer is working! Index: %d", index); // 加入这行
     std_msgs::Float32MultiArray mission_msg;
     mission_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
   

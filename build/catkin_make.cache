@@ -1,0 +1,2 @@
+FanciSwarm_urdf:fcu_core_rviz_swarm_goals_plugin:fcu_core_v2:quadrotor_msgs
+-DCATKIN_DEVEL_PREFIX=/home/ubuntu/fcu_ws/devel -DCMAKE_INSTALL_PREFIX=/home/ubuntu/fcu_ws/install -G Unix Makefiles
