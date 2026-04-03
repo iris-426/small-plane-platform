@@ -559,7 +559,7 @@ int main(int argc, char **argv) {
   ros::Rate loop_rate(200);
   gnss_global = nh.advertise<sensor_msgs::NavSatFix>("gnss_global_001",100);
   imu_global = nh.advertise<sensor_msgs::Imu>("imu_global_001",100);
-  odom_global = nh.advertise<nav_msgs::Odometry>("odom_global_001_pc",100);
+  odom_global = nh.advertise<nav_msgs::Odometry>("odom_global_001",100);
   gnss_001=nh.subscribe<sensor_msgs::NavSatFix>("gnss_global_001", 100, gnssHandler, ros::TransportHints().tcpNoDelay());
   odom=nh.subscribe<nav_msgs::Odometry>("odometry_001", 100, odomHandler, ros::TransportHints().tcpNoDelay());
   cmd=nh.subscribe<std_msgs::Int16>("command", 100, cmdHandler, ros::TransportHints().tcpNoDelay());
@@ -570,7 +570,7 @@ int main(int argc, char **argv) {
   command = nh.advertise<std_msgs::Int16>("command",100);
   path_target_pub = nh.advertise<nav_msgs::Path>("path_target_001", 100);
 
-  uwb = nh.advertise<fcu_core::uwb>("uwb_dis",10);//uwb添加
+  uwb = nh.advertise<fcu_core::uwb>("/uwb_dis",10);//uwb添加
 
 
   ros::Duration(1.0).sleep();

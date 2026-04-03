@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   ros::init(argc, argv, "command");
   ros::NodeHandle nh;
-  ros::Publisher command = nh.advertise<std_msgs::Int16>("/fcu_bridge/command",100);
+  ros::Publisher command = nh.advertise<std_msgs::Int16>("/keyboard_command",100);
 
   while (ros::ok()) {
     // 获取从键盘输入的数据

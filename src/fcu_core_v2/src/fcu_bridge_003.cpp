@@ -479,7 +479,7 @@ int main(int argc, char **argv) {
   ros::Rate loop_rate(200);
   gnss_global = nh.advertise<sensor_msgs::NavSatFix>("gnss_global_003",100);
   imu_global = nh.advertise<sensor_msgs::Imu>("imu_global_003",100);
-  odom_global = nh.advertise<nav_msgs::Odometry>("odom_global_003_pc",100);
+  odom_global = nh.advertise<nav_msgs::Odometry>("odom_global_003",100);
   gnss_001=nh.subscribe<sensor_msgs::NavSatFix>("/fcu_bridge_001/gnss_global_001", 100, gnssHandler, ros::TransportHints().tcpNoDelay());
   odom=nh.subscribe<nav_msgs::Odometry>("odometry_003", 100, odomHandler, ros::TransportHints().tcpNoDelay());
   cmd=nh.subscribe<std_msgs::Int16>("command", 100, cmdHandler, ros::TransportHints().tcpNoDelay());

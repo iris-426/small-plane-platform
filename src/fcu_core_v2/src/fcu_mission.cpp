@@ -99,95 +99,95 @@ std::vector<UAVControl> uav(num_uav);
 
 // --- 命令处理 ---
 void cmdHandler(const std_msgs::Int16::ConstPtr& cmd){
-  switch(cmd->data){
-    case 0://运行路径 p
-        break;
-    case 5://运行 r  
-        break;
-    case 20://返航
-        go_back = !go_back;
-        break;
-    case 21://gnss mode
-        gnss_mode = !gnss_mode;
-        break;    
-    case 109://路径 1
-        path_id=1; break;  
-    case 110://路径 2
-        path_id=2; break;
-    case 111://路径 3
-        path_id=3; break;      
-    case 118://路径 4
-        path_id=4; break;    
-    case 112://case 1
-        enable_pos=1; break;
-    case 113://case 2
-        enable_pos=2; break;
-    case 114://case 3 
-        enable_pos=3; break;   
-    case 115://case 4
-        enable_pos=4; break;
-    case 116://case 5
-        enable_pos=5; break;
-    case 117://case 6
-        enable_pos=6; break;
-    case 6://停止 s
-        move_stop = !move_stop; break;
-    case 7://运动 m
-        start_move = !start_move; break;
-    // 起飞控制
-    case 11: uav[0].takeoff = true; break;
-    case 12: uav[1].takeoff = true; break;
-    case 13: uav[2].takeoff = true; break;
-    case 14: uav[3].takeoff = true; break;
-    case 15: uav[4].takeoff = true; break;
-    case 16: uav[5].takeoff = true; break;
-    // 调试控制
-    case 107: Hight += 1.0;         break;
-    case 108: Hight -= 1.0;         break;     
-    case 101: Linear_speed +=0.1;   break;
-    case 102: Linear_speed -=0.1;   break;
-    case 103: direction = 1;        break;//向前
-    case 104: direction = 2;        break;//向后
-    case 105: direction = 3;        break;//向左
-    case 106: direction = 4;        break;//向右
-    case 8:   direction = 0;        break; // stop
-    default: break;
-  }
+    switch(cmd->data){
+        case 0://运行路径 p
+            break;
+        case 5://运行 r  
+            break;
+        case 20://返航
+            go_back = !go_back;
+            break;
+        case 21://gnss mode
+            gnss_mode = !gnss_mode;
+            break;    
+        case 109://路径 1
+            path_id=1; break;  
+        case 110://路径 2
+            path_id=2; break;
+        case 111://路径 3
+            path_id=3; break;      
+        case 118://路径 4
+            path_id=4; break;    
+        case 112://case 1
+            enable_pos=1; break;
+        case 113://case 2
+            enable_pos=2; break;
+        case 114://case 3 
+            enable_pos=3; break;   
+        case 115://case 4
+            enable_pos=4; break;
+        case 116://case 5
+            enable_pos=5; break;
+        case 117://case 6
+            enable_pos=6; break;
+        case 6://停止 s
+            move_stop = !move_stop; break;
+        case 7://运动 m
+            start_move = !start_move; break;
+        // 起飞控制
+        case 11: uav[0].takeoff = true; break;
+        case 12: uav[1].takeoff = true; break;
+        case 13: uav[2].takeoff = true; break;
+        case 14: uav[3].takeoff = true; break;
+        case 15: uav[4].takeoff = true; break;
+        case 16: uav[5].takeoff = true; break;
+        // 调试控制
+        case 107: Hight += 1.0;         break;
+        case 108: Hight -= 1.0;         break;     
+        case 101: Linear_speed +=0.1;   break;
+        case 102: Linear_speed -=0.1;   break;
+        case 103: direction = 1;        break;//向前
+        case 104: direction = 2;        break;//向后
+        case 105: direction = 3;        break;//向左
+        case 106: direction = 4;        break;//向右
+        case 8:   direction = 0;        break; // stop
+        default: break;
+    }
 }
 
 // --- 辅助函数 ---
 // 角度归一化 (-PI, PI]
 float normalize_angle(float angle) {
-  while (angle > M_PI) angle -= 2.0 * M_PI;
-  while (angle <= -M_PI) angle += 2.0 * M_PI;
-  return angle;
+    while (angle > M_PI) angle -= 2.0 * M_PI;
+    while (angle <= -M_PI) angle += 2.0 * M_PI;
+    return angle;
 }
 
 // --- 实机传感器数据获取 (虚拟相对感知) ---
 // 在实机实验中，利用高精度的全局 Odom 直接计算相对距离和角度
 void update_sensor_data() {
-  for (int i = 0; i < num_uav; i++) {
-    for (int j = 0; j < num_uav; j++) {
-      if (i == j) continue;
+    for (int i = 0; i < num_uav; i++) {
+        for (int j = 0; j < num_uav; j++) {
+        if (i == j) continue;
 
-      // 利用全局里程计获取两机之间的相对坐标差
-      float dx = uav[j].odom_px - uav[i].odom_px;
-      float dy = uav[j].odom_py - uav[i].odom_py;
-      
-      // 计算纯几何距离作为虚拟 UWB 测量值
-      float true_dist = std::hypot(dx, dy);
-      // 限制一个最小距离防止奇异点
-      if(true_dist < 0.01f) true_dist = 0.01f; 
-      
-      // 计算世界系下的方位角作为虚拟 视觉/罗盘 测量值
-      float true_world_angle = atan2(dy, dx);
+        // 利用全局里程计获取两机之间的相对坐标差
+        float dx = uav[j].odom_px - uav[i].odom_px;
+        float dy = uav[j].odom_py - uav[i].odom_py;
+        
+        // 计算纯几何距离作为虚拟 UWB 测量值
+        float true_dist = std::hypot(dx, dy);
+        // 限制一个最小距离防止奇异点
+        if(true_dist < 0.01f) true_dist = 0.01f; 
+        
+        // 计算世界系下的方位角作为虚拟 视觉/罗盘 测量值
+        float true_world_angle = atan2(dy, dx);
 
-      // 赋值给本机对邻居的观测数组
-      uav[i].neighbors[j].distance = true_dist;      
-      uav[i].neighbors[j].bearing = normalize_angle(true_world_angle);  
+        // 赋值给本机对邻居的观测数组
+        uav[i].neighbors[j].distance = true_dist;      
+        uav[i].neighbors[j].bearing = normalize_angle(true_world_angle);  
 
+        }
     }
-  }
 }
 
 void update_all_mission_states(float dt) {
@@ -240,7 +240,10 @@ void update_all_mission_states(float dt) {
     
     case 3: // 编队整体走直线
         {
-            swarm_center.x += Linear_speed * dt;
+            if(start_move){
+                swarm_center.x += Linear_speed * dt;
+            }
+            
 
             for (int i = 0; i < run_uav; i++) {
                 float phi = 2.0f * M_PI / run_uav* i;
@@ -325,71 +328,70 @@ void update_all_mission_states(float dt) {
 
 // 封装控制生成函数
 void create_control(float dt) {
-  if(gnss_mode){
-    for (int i = 0; i < run_uav; i++) {
-      uav[i].GNSS_mode = true;
-      uav[i].px = uav[i].des_px;
-      uav[i].py = uav[i].des_py;
-      uav[i].pz = uav[i].des_pz;
-      uav[i].yaw = uav[i].des_yaw;
-  }
-  } else {
-    for (int i = 0; i < run_uav; i++) {
-      uav[i].GNSS_mode = false;
-      uav[i].vx = uav[i].des_vx;
-      uav[i].vy = uav[i].des_vy;
-      uav[i].vz = uav[i].des_vz;
-      uav[i].yaw = uav[i].des_yaw;
+    if(gnss_mode){
+        for (int i = 0; i < run_uav; i++) {
+            uav[i].GNSS_mode = true;
+            uav[i].px = uav[i].des_px;
+            uav[i].py = uav[i].des_py;
+            uav[i].pz = uav[i].des_pz;
+            uav[i].yaw = uav[i].des_yaw;
+        }
+    } else {
+        for (int i = 0; i < run_uav; i++) {
+            uav[i].GNSS_mode = false;
+            uav[i].vx = uav[i].des_vx;
+            uav[i].vy = uav[i].des_vy;
+            uav[i].vz = uav[i].des_vz;
+            uav[i].yaw = uav[i].des_yaw;
+        }
     }
-  }
   
 }
 
 // --- 动态更新无人机能力与状态机 ---
-void update_capabilities() {
-  std::set<int> gnss_ids   = {0, 1, 2, 3, 4, 5};                // 拥有 GNSS 的ID集合
-  std::set<int> comm_ids   = {};                // 拥有 通讯 的ID集合
-  std::set<int> uwb_ids    = {0,1};             // 拥有 UWB 的ID集合
-  std::set<int> vision_ids = {0, 1, 2, 3, 4, 5}; // 拥有 视觉 的ID集合
+    void update_capabilities() {
+    std::set<int> gnss_ids   = {0, 1, 2, 3, 4, 5};                // 拥有 GNSS 的ID集合
+    std::set<int> comm_ids   = {};                // 拥有 通讯 的ID集合
+    std::set<int> uwb_ids    = {0,1};             // 拥有 UWB 的ID集合
+    std::set<int> vision_ids = {0, 1, 2, 3, 4, 5}; // 拥有 视觉 的ID集合
 
-  if(enable_pos == 1) { gnss_ids = {0,1,2};}
-  if(enable_pos == 2) { gnss_ids = {}; comm_ids = {0,1,2}; uwb_ids = {0,1,2};}
-  if(enable_pos == 3) { gnss_ids = {}; comm_ids = {}; uwb_ids = {0,1,2};}
-  if(enable_pos == 4) { gnss_ids = {}; comm_ids = {}; uwb_ids = {};}
+    if(enable_pos == 1) { gnss_ids = {0,1,2};}
+    if(enable_pos == 2) { gnss_ids = {}; comm_ids = {0,1,2}; uwb_ids = {0,1,2};}
+    if(enable_pos == 3) { gnss_ids = {}; comm_ids = {}; uwb_ids = {0,1,2};}
+    if(enable_pos == 4) { gnss_ids = {}; comm_ids = {}; uwb_ids = {};}
 
-  for(int i=0; i<num_uav; i++){
-    // --- 自动能力分配 count() 返回 1 表示存在，0 表示不存在 --- 
-    uav[i].cap.g = gnss_ids.count(i); 
-    uav[i].cap.c = comm_ids.count(i);
-    uav[i].cap.u = uwb_ids.count(i); 
-    uav[i].cap.v = vision_ids.count(i); 
+    for(int i=0; i<num_uav; i++){
+        // --- 自动能力分配 count() 返回 1 表示存在，0 表示不存在 --- 
+        uav[i].cap.g = gnss_ids.count(i); 
+        uav[i].cap.c = comm_ids.count(i);
+        uav[i].cap.u = uwb_ids.count(i); 
+        uav[i].cap.v = vision_ids.count(i); 
 
-    // 有 GNSS 则位置控制
-    if(uav[i].cap.g){
-      uav[i].GNSS_mode = true;
-    } else {
-      uav[i].GNSS_mode = false; 
+        // 有 GNSS 则位置控制
+        if(uav[i].cap.g){
+        uav[i].GNSS_mode = true;
+        } else {
+        uav[i].GNSS_mode = false; 
+        }
+
+        // 状态机分级更新
+        if(uav[i].cap.g){
+        uav[i].state = 1; // 有 GNSS 则 Lv4
+        }else if(uav[i].cap.c){
+        uav[i].state = 2; // 有通讯则 Lv3
+        }else if(uav[i].cap.u && uav[i].cap.v && uwb_ids.size() >= 2){
+        uav[i].state = 3; // 有 UWB 和 视觉 则 Lv2
+        }else if(uav[i].cap.v){
+        uav[i].state = 4; // 仅有 视觉 则 Lv1
+        }
+
+        if(enable_pos == 5) {uav[i].state = 5;}// 强制绝对速度飞行（测试用）
     }
-
-    // 状态机分级更新
-    if(uav[i].cap.g){
-      uav[i].state = 1; // 有 GNSS 则 Lv4
-    }else if(uav[i].cap.c){
-      uav[i].state = 2; // 有通讯则 Lv3
-    }else if(uav[i].cap.u && uav[i].cap.v && uwb_ids.size() >= 2){
-      uav[i].state = 3; // 有 UWB 和 视觉 则 Lv2
-    }else if(uav[i].cap.v){
-      uav[i].state = 4; // 仅有 视觉 则 Lv1
-    }
-
-    if(enable_pos == 5) {uav[i].state = 5;}// 强制绝对速度飞行（测试用）
-  }
 }
 
 static ros::Publisher mission_pubs[6];// 6个任务话题的发布者数组
 // 核心模板：统一提取数据并发布的逻辑
 void process_mission(int index) {
-    ROS_INFO("Timer is working! Index: %d", index); // 加入这行
     std_msgs::Float32MultiArray mission_msg;
     mission_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
   
@@ -477,59 +479,64 @@ void odom_global005_handler(const nav_msgs::Odometry::ConstPtr& odom) { process_
 void odom_global006_handler(const nav_msgs::Odometry::ConstPtr& odom) { process_odom(5, odom); }
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "fcu_mission");
-  ros::NodeHandle nh("~");
-  ros::Subscriber comm=nh.subscribe<std_msgs::Int16>("/fcu_command/command", 100, cmdHandler);
-  ros::Subscriber odom001=nh.subscribe<nav_msgs::Odometry>("odom_global_001_pc", 100, odom_global001_handler);
-  ros::Subscriber odom002=nh.subscribe<nav_msgs::Odometry>("odom_global_002_pc", 100, odom_global002_handler);
-  ros::Subscriber odom003=nh.subscribe<nav_msgs::Odometry>("odom_global_003_pc", 100, odom_global003_handler);
-  ros::Subscriber odom004=nh.subscribe<nav_msgs::Odometry>("odom_global_004_pc", 100, odom_global004_handler);
-  ros::Subscriber odom005=nh.subscribe<nav_msgs::Odometry>("odom_global_005_pc", 100, odom_global005_handler);
-  ros::Subscriber odom006=nh.subscribe<nav_msgs::Odometry>("odom_global_006_pc", 100, odom_global006_handler);
+    ros::init(argc, argv, "fcu_mission");
+    ros::NodeHandle nh("~");
 
-  mission_pubs[0] = nh.advertise<std_msgs::Float32MultiArray>("mission_001",100);
-  mission_pubs[1] = nh.advertise<std_msgs::Float32MultiArray>("mission_002",100);
-  mission_pubs[2] = nh.advertise<std_msgs::Float32MultiArray>("mission_003",100);
-  mission_pubs[3] = nh.advertise<std_msgs::Float32MultiArray>("mission_004",100);
-  mission_pubs[4] = nh.advertise<std_msgs::Float32MultiArray>("mission_005",100);
-  mission_pubs[5] = nh.advertise<std_msgs::Float32MultiArray>("mission_006",100);
+    for(int i = 0; i < num_uav; i++){
+        uav[i].init(num_uav);
+    }
 
-  ros::Timer timer_mission_001 = nh.createTimer(ros::Duration(0.1),execute_mission_001,false);
-  ros::Timer timer_mission_002 = nh.createTimer(ros::Duration(0.1),execute_mission_002,false);
-  ros::Timer timer_mission_003 = nh.createTimer(ros::Duration(0.1),execute_mission_003,false);
-  ros::Timer timer_mission_004 = nh.createTimer(ros::Duration(0.1),execute_mission_004,false);
-  ros::Timer timer_mission_005 = nh.createTimer(ros::Duration(0.1),execute_mission_005,false);
-  ros::Timer timer_mission_006 = nh.createTimer(ros::Duration(0.1),execute_mission_006,false);
+    ros::Subscriber comm=nh.subscribe<std_msgs::Int16>("/keyboard_command", 100, cmdHandler);
+    ros::Subscriber odom001=nh.subscribe<nav_msgs::Odometry>("odom_global_001", 100, odom_global001_handler);
+    ros::Subscriber odom002=nh.subscribe<nav_msgs::Odometry>("odom_global_002", 100, odom_global002_handler);
+    ros::Subscriber odom003=nh.subscribe<nav_msgs::Odometry>("odom_global_003", 100, odom_global003_handler);
+    ros::Subscriber odom004=nh.subscribe<nav_msgs::Odometry>("odom_global_004", 100, odom_global004_handler);
+    ros::Subscriber odom005=nh.subscribe<nav_msgs::Odometry>("odom_global_005", 100, odom_global005_handler);
+    ros::Subscriber odom006=nh.subscribe<nav_msgs::Odometry>("odom_global_006", 100, odom_global006_handler);
 
-  ros::Rate loop_rate(200);
-  while (ros::ok()) {
-    ros::spinOnce();
-    
-    static tf::TransformBroadcaster br;
-    tf::Transform transform;
-    tf::Quaternion q;
-    transform.setOrigin(tf::Vector3(0, 0,0)); q.setRPY(0, 0, 0); transform.setRotation(q);
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "uwb"));
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "world"));
+    mission_pubs[0] = nh.advertise<std_msgs::Float32MultiArray>("mission_001",100);
+    mission_pubs[1] = nh.advertise<std_msgs::Float32MultiArray>("mission_002",100);
+    mission_pubs[2] = nh.advertise<std_msgs::Float32MultiArray>("mission_003",100);
+    mission_pubs[3] = nh.advertise<std_msgs::Float32MultiArray>("mission_004",100);
+    mission_pubs[4] = nh.advertise<std_msgs::Float32MultiArray>("mission_005",100);
+    mission_pubs[5] = nh.advertise<std_msgs::Float32MultiArray>("mission_006",100);
 
-    static ros::Time last_time = ros::Time::now();//计算dt
-    ros::Time now = ros::Time::now();
-    float dt = (now - last_time).toSec();
-    last_time = now;
-    
-    /// --- 传感器数据更新 (虚拟相对感知) ---
-    update_sensor_data();
+    ros::Timer timer_mission_001 = nh.createTimer(ros::Duration(0.1),execute_mission_001,false);
+    ros::Timer timer_mission_002 = nh.createTimer(ros::Duration(0.1),execute_mission_002,false);
+    ros::Timer timer_mission_003 = nh.createTimer(ros::Duration(0.1),execute_mission_003,false);
+    ros::Timer timer_mission_004 = nh.createTimer(ros::Duration(0.1),execute_mission_004,false);
+    ros::Timer timer_mission_005 = nh.createTimer(ros::Duration(0.1),execute_mission_005,false);
+    ros::Timer timer_mission_006 = nh.createTimer(ros::Duration(0.1),execute_mission_006,false);
 
-    /// --- 能力状态更新 ---
-    update_capabilities();
+    ros::Rate loop_rate(200);
+    while (ros::ok()) {
+        ros::spinOnce();
+        
+        static tf::TransformBroadcaster br;
+        tf::Transform transform;
+        tf::Quaternion q;
+        transform.setOrigin(tf::Vector3(0, 0,0)); q.setRPY(0, 0, 0); transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "uwb"));
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "world"));
 
-    // --- 任务状态更新 ---
-    update_all_mission_states(dt);
+        static ros::Time last_time = ros::Time::now();//计算dt
+        ros::Time now = ros::Time::now();
+        float dt = (now - last_time).toSec();
+        last_time = now;
+        
+        /// --- 传感器数据更新 (虚拟相对感知) ---
+        update_sensor_data();
 
-    // --- 控制量生成 ---
-    create_control(dt);
+        /// --- 能力状态更新 ---
+        update_capabilities();
 
-    loop_rate.sleep();
-  }
-  return 0;
+        // --- 任务状态更新 ---
+        update_all_mission_states(dt);
+
+        // --- 控制量生成 ---
+        create_control(dt);
+
+        loop_rate.sleep();
+    }
+    return 0;
 }
