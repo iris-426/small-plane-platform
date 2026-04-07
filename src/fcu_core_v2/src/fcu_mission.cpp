@@ -29,12 +29,12 @@
  */
 // --- 全局配置区 ---
 static uint8_t enable_pos=0;
-static bool go_back = false,gnss_mode = true, move_stop = false;
+static bool go_back = false,gnss_mode = false, move_stop = false;
 constexpr int num_uav = 6;
 constexpr int run_uav = 3; // 参与编队的无人机数量 (Case 3 使用)
 
 // 修改半径为 10.0 以便在 Gazebo 中更容易观察队形细节
-float Hight = 1.0f, Radius = 20.0f,radius =4.0f, Angular_speed = 0.2f, Linear_speed=1.0f; 
+float Hight = 1.0f, Radius = 10.0f,radius =4.0f, Angular_speed = 0.1f, Linear_speed=0.5f; 
 static bool start_move = false;
 int direction = 0,path_id = 1;
 
@@ -204,8 +204,8 @@ void update_all_mission_states(float dt) {
             float phase_offset = 2.0 * M_PI / run_uav * i;                     
 
             // 只计算位置
-            uav[i].des_px = radius*2.0 * cos(current_phase + phase_offset);
-            uav[i].des_py = radius*2.0 * sin(current_phase + phase_offset);
+            uav[i].des_px = radius*1.5 * cos(current_phase + phase_offset);
+            uav[i].des_py = radius*1.5 * sin(current_phase + phase_offset);
             uav[i].des_pz = Hight;
             
             // 速度稍后统一计算
@@ -242,8 +242,7 @@ void update_all_mission_states(float dt) {
         {
             if(start_move){
                 swarm_center.x += Linear_speed * dt;
-            }
-            
+            }            
 
             for (int i = 0; i < run_uav; i++) {
                 float phi = 2.0f * M_PI / run_uav* i;
@@ -327,29 +326,248 @@ void update_all_mission_states(float dt) {
 }
 
 // 封装控制生成函数
-void create_control(float dt) {
-    if(gnss_mode){
-        for (int i = 0; i < run_uav; i++) {
-            uav[i].GNSS_mode = true;
-            uav[i].px = uav[i].des_px;
-            uav[i].py = uav[i].des_py;
-            uav[i].pz = uav[i].des_pz;
-            uav[i].yaw = uav[i].des_yaw;
-        }
-    } else {
-        for (int i = 0; i < run_uav; i++) {
-            uav[i].GNSS_mode = false;
-            uav[i].vx = uav[i].des_vx;
-            uav[i].vy = uav[i].des_vy;
-            uav[i].vz = uav[i].des_vz;
-            uav[i].yaw = uav[i].des_yaw;
-        }
+void create_control(int i, float dt){    
+    if(gnss_mode) {
+        uav[i].state = 1; // 强制进入 Case 1
     }
-  
+    switch (uav[i].state)
+    {
+    case 1://绝对位置控制
+        uav[i].GNSS_mode = true;
+        uav[i].px = uav[i].des_px;
+        uav[i].py = uav[i].des_py;
+        uav[i].pz = Hight;
+        uav[i].yaw = uav[i].des_yaw;
+    break;
+    case 2:// --- Case 2: 速度控制 ---
+        uav[i].GNSS_mode = false;
+        uav[i].vx = uav[i].des_vx;
+        uav[i].vy = uav[i].des_vy;
+        uav[i].vz = 0.0f;
+        uav[i].yaw = uav[i].des_yaw;
+    break;
+    case 3:// --- Case 3: 静默跟随 (UWB+Vision, No Comm, No GNSS) ---
+        {
+        // 变量：用于累加"本机期望位置(在本地系下)"
+        float sum_local_des_x = 0.0f;
+        float sum_local_des_y = 0.0f;
+        int valid_obs_count = 0;
+
+        // 遍历所有邻居 (作为参考点)
+        for(int j = 0; j < run_uav; j++) {
+            if(i == j) continue;
+
+            if(uav[i].cap.u && uav[i].cap.v && uav[j].cap.u) {
+                
+                // 步骤 1: 建立本地感知系 (获取邻居实际相对位置)
+                float dist = uav[i].neighbors[j].distance;
+                float bear = uav[i].neighbors[j].bearing; 
+                
+                // P_j_meas (相对于本机 i 的位置)
+                float p_j_meas_x = dist * cos(bear);
+                float p_j_meas_y = dist * sin(bear);
+
+                // 步骤 2: 计算期望相对关系 (从任务库)
+                // Delta_P_ij_des = P_j_des - P_i_des
+                float delta_p_ij_des_x = uav[j].des_px - uav[i].des_px;
+                float delta_p_ij_des_y = uav[j].des_py - uav[i].des_py;
+
+                // 步骤 3: 投影与解算
+                // P_i_target_local = P_j_meas - Delta_P_ij_des
+                float p_i_target_local_x = p_j_meas_x - delta_p_ij_des_x;
+                float p_i_target_local_y = p_j_meas_y - delta_p_ij_des_y;
+
+                // 累加
+                sum_local_des_x += p_i_target_local_x;
+                sum_local_des_y += p_i_target_local_y;
+                valid_obs_count++;
+            }
+        }
+
+        // 步骤 4: 误差生成与控制
+        // 基础前馈速度
+        float v_cmd_x = uav[i].des_vx; 
+        float v_cmd_y = uav[i].des_vy;
+        float Kp = 0.8f; // 队形保持增益
+
+        if(valid_obs_count > 0) {
+            // 计算最终的本机期望位置 (在本地系下)
+            float local_des_x = sum_local_des_x / valid_obs_count;
+            float local_des_y = sum_local_des_y / valid_obs_count;
+
+            // 计算误差: 期望位置(Local) - 当前位置(Local原点0)
+            float err_x = local_des_x; 
+            float err_y = local_des_y;
+
+            // 叠加反馈控制量
+            v_cmd_x += Kp * err_x;
+            v_cmd_y += Kp * err_y;
+        } 
+        
+        // 【安全优化】：实机速度限幅 (防止 UWB 跳变导致指令突变失控)
+        float max_v = 1.0f; // 最大允许速度 1.0 m/s
+        float current_v_mag = std::hypot(v_cmd_x, v_cmd_y);
+        if (current_v_mag > max_v) {
+            v_cmd_x = (v_cmd_x / current_v_mag) * max_v;
+            v_cmd_y = (v_cmd_y / current_v_mag) * max_v;
+        }
+
+        // 赋值控制量
+        uav[i].vx = v_cmd_x;
+        uav[i].vy = v_cmd_y;
+        uav[i].pz = Hight; 
+        uav[i].yaw = uav[i].des_yaw; 
+        }
+    break;
+    case 4: // --- Case 4: 弱感知视觉跟随 (Vision Only, No UWB, No Comms) ---
+        {
+
+            // [阶段 A] 基础前馈
+            float v_cmd_x = uav[i].des_vx * 1.0f; 
+            float v_cmd_y = uav[i].des_vy * 1.0f;
+
+            // [阶段 B] 遍历与筛选 (Data Collection)
+            struct VisionData {
+                int id;
+                float theta_meas; // 观测角度
+                float theta_des;  // 期望角度
+                float dist_theory;// 理论距离(用于增益调度)
+            };
+            std::vector<VisionData> vis_data;
+
+            for(int j = 0; j < run_uav; j++) {
+                if(i == j) continue; 
+                // 仅使用视觉能力
+                if(uav[i].cap.v) {
+                    //任务解析
+                    float dx_des = uav[j].des_px - uav[i].des_px;
+                    float dy_des = uav[j].des_py - uav[i].des_py;
+                    float theta_des = atan2(dy_des, dx_des);
+                    float dist_theory = std::hypot(dx_des, dy_des); // 统一使用 std::hypot
+                    if(dist_theory < 0.1f) dist_theory = 0.1f; 
+
+                    float theta_meas = uav[i].neighbors[j].bearing;//感知获取
+                    
+                    vis_data.push_back({j, theta_meas, theta_des, dist_theory});
+                }
+            }
+
+            // [阶段 C] 优选基线逻辑 (Baseline Selection)
+            // 如果能看到 2 个以上邻居，寻找夹角差异最大的一对
+            int best_idx1 = -1, best_idx2 = -1;
+            float max_span = -1.0f;
+
+            if (vis_data.size() >= 2) {
+                for(size_t a = 0; a < vis_data.size(); a++) {
+                    for(size_t b = a + 1; b < vis_data.size(); b++) {
+                        // 计算两邻居的观测夹角 (0~PI)
+                        float span = fabs(normalize_angle(vis_data[a].theta_meas - vis_data[b].theta_meas));
+                        if(span > M_PI) span = 2*M_PI - span; // 取劣弧
+
+                        // 寻找张角最大的一对 (几何GDOP最好)
+                        if(span > max_span) {
+                            max_span = span;
+                            best_idx1 = a;
+                            best_idx2 = b;
+                        }
+                    }
+                }
+            } else if (vis_data.size() == 1) {
+                // 只有一个邻居，没得选
+                best_idx1 = 0;
+            }
+
+            // [阶段 D] 基于优选基线的控制律合成
+            float sum_corr_x = 0.0f;
+            float sum_corr_y = 0.0f;
+            int valid_count = 0;
+            
+            // 1. 横向控制 (只针对优选出的邻居)
+            std::vector<int> selected_indices;
+            if(best_idx1 != -1) selected_indices.push_back(best_idx1);
+            if(best_idx2 != -1) selected_indices.push_back(best_idx2);
+
+            float deadzone_theta = 5.0f * M_PI / 180.0f; // 5度死区，避免过度纠正
+
+            for(int idx : selected_indices) {
+                VisionData& d = vis_data[idx];
+                
+                // 角度误差
+                float e_theta = normalize_angle(d.theta_meas - d.theta_des);
+
+                // 切向向量
+                float n_perp_x = -sin(d.theta_meas);
+                float n_perp_y = cos(d.theta_meas);
+
+                float K_omega = 0.5f; 
+                if(fabs(e_theta) < deadzone_theta) {
+                    e_theta = 0.0f; // 在死区内不进行控制
+                }
+                float v_corr_mag = K_omega * e_theta * d.dist_theory;
+
+                sum_corr_x += v_corr_mag * n_perp_x;
+                sum_corr_y += v_corr_mag * n_perp_y;
+                valid_count++;
+            }
+
+            if(valid_count > 0) {
+                v_cmd_x += sum_corr_x / valid_count;
+                v_cmd_y += sum_corr_y / valid_count;
+            }
+
+            // 2. 纵向控制 (单目测距与死区控制)
+            if (best_idx1 != -1 && best_idx2 != -1) {
+                float K_dist = 0.2f; // 纵向距离恢复增益；经验固定值 (0.1f)；决定了无人机超出死区后的推拉力度。
+                float deadzone_ratio = 0.3f; // 死区比例系数；经验固定值 (0.4f)；允许测距波动的安全容差范围（±40%）。
+
+                float v_push_x = 0.0f; // 累加推拉速度分量X；循环累加后取平均；用于保持编队宏观尺度的附加速度。
+                float v_push_y = 0.0f; // 累加推拉速度分量Y；循环累加后取平均；用于保持编队宏观尺度的附加速度。
+
+                // 使用循环遍历两个优选邻居，避免代码重复
+                int target_indices[2] = {best_idx1, best_idx2};
+                for(int idx : target_indices) {
+                    VisionData& d = vis_data[idx];
+
+                    float diff = uav[i].neighbors[d.id].distance - d.dist_theory; // 绝对距离误差；实际距离-理论距离；衡量当前偏远(正)还是偏近(负)。
+                    float deadzone = d.dist_theory * deadzone_ratio; // 绝对死区阈值；理论距离*死区比例；免控区域的具体半径。
+                    float err = 0.0f; // 有效补偿误差量；扣除死区后的剩余误差；触发平滑纵向速度补偿的激发量。
+                    
+                    if (diff > deadzone) {
+                        err = diff - deadzone; // 实际距离超出死区上限：太远，需靠近
+                    } else if (diff < -deadzone) {
+                        err = diff + deadzone; // 实际距离低于死区下限：太近，需远离
+                    }
+                    
+                    // 沿着观测角方向推拉
+                    v_push_x += K_dist * err * cos(d.theta_meas);
+                    v_push_y += K_dist * err * sin(d.theta_meas);
+                }
+
+                // 取两个基线控制量的平均值并叠加到最终速度指令上
+                v_cmd_x += v_push_x / 2.0f;
+                v_cmd_y += v_push_y / 2.0f;
+            }
+
+            // 【安全优化】：实机速度限幅 (防止视觉跳变导致指令突变失控)
+            float max_v = 1.0f; // 最大允许速度 1.0 m/s
+            float current_v_mag = std::hypot(v_cmd_x, v_cmd_y);
+            if (current_v_mag > max_v) {
+                v_cmd_x = (v_cmd_x / current_v_mag) * max_v;
+                v_cmd_y = (v_cmd_y / current_v_mag) * max_v;
+            }
+
+            uav[i].vx = v_cmd_x;
+            uav[i].vy = v_cmd_y;
+            uav[i].pz = Hight;           
+            uav[i].yaw = uav[i].des_yaw; 
+        }
+        break;
+
+    }
 }
 
 // --- 动态更新无人机能力与状态机 ---
-    void update_capabilities() {
+void update_capabilities() {
     std::set<int> gnss_ids   = {0, 1, 2, 3, 4, 5};                // 拥有 GNSS 的ID集合
     std::set<int> comm_ids   = {};                // 拥有 通讯 的ID集合
     std::set<int> uwb_ids    = {0,1};             // 拥有 UWB 的ID集合
@@ -534,7 +752,11 @@ int main(int argc, char **argv) {
         update_all_mission_states(dt);
 
         // --- 控制量生成 ---
-        create_control(dt);
+        if(!move_stop) {
+            for(int i = 0; i < run_uav; i++) {
+                create_control(i, dt);
+            }
+        }
 
         loop_rate.sleep();
     }
