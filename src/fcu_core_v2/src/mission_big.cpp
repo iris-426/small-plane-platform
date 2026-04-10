@@ -34,7 +34,7 @@ constexpr int num_uav = 6;
 constexpr int run_uav = 3; // 参与编队的无人机数量 (Case 3 使用)
 
 // 修改半径为 10.0 以便在 Gazebo 中更容易观察队形细节
-float Hight = 1.0f, Radius = 10.0f,radius =4.0f, Angular_speed = 0.03f, Linear_speed=0.5f; 
+float Hight = 1.0f, Radius = 10.0f,radius =4.0f, Angular_speed = 0.1f, Linear_speed=0.5f; 
 static bool start_move = false;
 int direction = 0,path_id = 1;
 
@@ -100,24 +100,40 @@ std::vector<UAVControl> uav(num_uav);
 // --- 命令处理 ---
 void cmdHandler(const std_msgs::Int16::ConstPtr& cmd){
     switch(cmd->data){
-        //集群运动控制        
-        case 6:  move_stop = !move_stop;    break;    //停止 s
-        case 7:  start_move = !start_move;  break;    //运动 m
-        case 21: gnss_mode = !gnss_mode;    break;    //gnss mode
-        case 20: go_back = !go_back;        break;    //返航
-
-        // 任务库选择
-        case 109: path_id=1;    break;  //路径 1
-        case 110: path_id=2;    break;  //路径 2
-        case 111: path_id=3;    break;  //路径 3
-        case 118: path_id=4;    break;  //路径 4
-        case 112: enable_pos=1; break;  //case 1
-        case 113: enable_pos=2; break;  //case 2
-        case 114: enable_pos=3; break;  //case 3
-        case 115: enable_pos=4; break;  //case 4
-        case 116: enable_pos=5; break;  //case 5
-        case 117: enable_pos=6; break;  //case 6
-            
+        case 0://运行路径 p
+            break;
+        case 5://运行 r  
+            break;
+        case 20://返航
+            go_back = !go_back;
+            break;
+        case 21://gnss mode
+            gnss_mode = !gnss_mode;
+            break;    
+        case 109://路径 1
+            path_id=1; break;  
+        case 110://路径 2
+            path_id=2; break;
+        case 111://路径 3
+            path_id=3; break;      
+        case 118://路径 4
+            path_id=4; break;    
+        case 112://case 1
+            enable_pos=1; break;
+        case 113://case 2
+            enable_pos=2; break;
+        case 114://case 3 
+            enable_pos=3; break;   
+        case 115://case 4
+            enable_pos=4; break;
+        case 116://case 5
+            enable_pos=5; break;
+        case 117://case 6
+            enable_pos=6; break;
+        case 6://停止 s
+            move_stop = !move_stop; break;
+        case 7://运动 m
+            start_move = !start_move; break;
         // 起飞控制
         case 11: uav[0].takeoff = true; break;
         case 12: uav[1].takeoff = true; break;
@@ -125,7 +141,6 @@ void cmdHandler(const std_msgs::Int16::ConstPtr& cmd){
         case 14: uav[3].takeoff = true; break;
         case 15: uav[4].takeoff = true; break;
         case 16: uav[5].takeoff = true; break;
-
         // 调试控制
         case 107: Hight += 1.0;         break;
         case 108: Hight -= 1.0;         break;     
@@ -192,10 +207,8 @@ void update_all_mission_states(float dt) {
             uav[i].des_px = radius*1.5 * cos(current_phase + phase_offset);
             uav[i].des_py = radius*1.5 * sin(current_phase + phase_offset);
             uav[i].des_pz = Hight;
-            float dx = 0.0f - uav[i].des_px;
-            float dy = 0.0f - uav[i].des_py;
-            uav[i].des_yaw = atan2(dy, dx);
             
+            // 速度稍后统一计算
         }
         break;
 
@@ -203,7 +216,7 @@ void update_all_mission_states(float dt) {
         {
             static float theta = 0.0f;
             if (start_move) {
-                theta += Angular_speed/3 * dt;;
+                theta += Angular_speed/3 * dt;
             }
 
             // 大圆中心位置
@@ -237,7 +250,6 @@ void update_all_mission_states(float dt) {
                 uav[i].des_px = swarm_center.x + radius * cos(phi);
                 uav[i].des_py = swarm_center.y + radius * sin(phi);
                 uav[i].des_pz = Hight;
-                uav[i].des_yaw = 0.0f;
             }
         }
         break;    
@@ -277,7 +289,6 @@ void update_all_mission_states(float dt) {
                 uav[i].des_px = swarm_center.x + radius * cos(phi);
                 uav[i].des_py = swarm_center.y + radius * sin(phi);
                 uav[i].des_pz = Hight;
-                uav[i].des_yaw = 0.0f;
             }
         }
         break;
@@ -301,6 +312,11 @@ void update_all_mission_states(float dt) {
             uav[i].des_vz = 0.0f;
         } else {
             uav[i].des_vx = 0.0f; uav[i].des_vy = 0.0f; uav[i].des_vz = 0.0f;
+        }
+
+        // 自动计算期望 Yaw (朝向速度方向) 只有当有明显运动时才更新 Yaw，防止停止时乱转
+        if (std::hypot(uav[i].des_vx, uav[i].des_vy) > 0.1f) {
+            uav[i].des_yaw = atan2(uav[i].des_vy, uav[i].des_vx);
         }
 
         // 更新历史位置，供下一帧使用
@@ -636,7 +652,7 @@ void process_mission(int index) {
     }
 
     // 从对应的 uav 结构体中读取控制量并打包
-    mission_msg.data[0] = uav[index].des_yaw; // yaw 
+    mission_msg.data[0] = 0.0f; 
     mission_msg.data[1] = 0.0f;
     mission_msg.data[2] = send_px; 
     mission_msg.data[3] = send_py; 
@@ -685,7 +701,7 @@ void odom_global005_handler(const nav_msgs::Odometry::ConstPtr& odom) { process_
 void odom_global006_handler(const nav_msgs::Odometry::ConstPtr& odom) { process_odom(5, odom); }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "fcu_mission");
+    ros::init(argc, argv, "mission_big");
     ros::NodeHandle nh("~");
 
     for(int i = 0; i < num_uav; i++){

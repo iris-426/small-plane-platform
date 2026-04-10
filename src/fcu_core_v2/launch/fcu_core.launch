@@ -114,6 +114,7 @@
     </node>
 
     <node pkg="fcu_core" type="command" name="command" output="screen" />
+    <node pkg="topic_tools" type="relay" name="keyboard_command_relay" args="/keyboard_command /fcu_bridge/command" output="screen" />
 
     <node pkg="fcu_core" type="fcu_mission" name="fcu_mission" output="screen" >
         <remap from="~pos_cmd" to="planning/pos_cmd"/>
