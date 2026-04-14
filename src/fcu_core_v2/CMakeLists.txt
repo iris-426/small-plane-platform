@@ -27,6 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 add_message_files(
   FILES
   uwb.msg
+  des_and_state.msg
 )
 
 generate_messages(

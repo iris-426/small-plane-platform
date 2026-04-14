@@ -23,6 +23,7 @@
 #include <tf/transform_broadcaster.h>
 #include "quadrotor_msgs/PositionCommand.h"
 #include "../mavlink/common/mavlink.h"
+#include "fcu_core/des_and_state.h"
 
 /**
  * 注意：工程中mission_xxx话题为发给飞控的目标值，目标位移应为FRU坐标系，目标姿态应为FRD坐标系
@@ -82,7 +83,6 @@ struct UAVControl {
     // 状态量
     int state = 0;//自身阶段
     bool GNSS_mode = false; // true=位置控制, false=速度控制
-    bool takeoff = false;
     geometry_msgs::Point startpoint = {};
 
     // --- 算法核心数据 ---
@@ -117,14 +117,6 @@ void cmdHandler(const std_msgs::Int16::ConstPtr& cmd){
         case 115: enable_pos=4; break;  //case 4
         case 116: enable_pos=5; break;  //case 5
         case 117: enable_pos=6; break;  //case 6
-            
-        // 起飞控制
-        case 11: uav[0].takeoff = true; break;
-        case 12: uav[1].takeoff = true; break;
-        case 13: uav[2].takeoff = true; break;
-        case 14: uav[3].takeoff = true; break;
-        case 15: uav[4].takeoff = true; break;
-        case 16: uav[5].takeoff = true; break;
 
         // 调试控制
         case 107: Hight += 1.0;         break;
@@ -596,6 +588,7 @@ void update_capabilities() {
 }
 
 static ros::Publisher mission_pubs[6];// 6个任务话题的发布者数组
+static ros::Publisher des_state_pubs[6]; // <--- 新增：用于发布期望状态与能力的发布者数组
 // 核心模板：统一提取数据并发布的逻辑
 void process_mission(int index) {
     std_msgs::Float32MultiArray mission_msg;
@@ -649,7 +642,32 @@ void process_mission(int index) {
     mission_msg.data[10] = 0.0f;  
   
     mission_pubs[index].publish(mission_msg);   // 对应飞机发布对应数据
+
+    // --- 新增：打包并发布期望状态自定义话题 ---
+    fcu_core::des_and_state state_msg;    
+    // 1. 表头与基本信息
+    state_msg.header.stamp = ros::Time::now();
+    state_msg.header.frame_id = "world"; // 统一在世界系下
+    state_msg.uav_id = index;            // 飞机编号
+    // 2. 期望位置
+    state_msg.des_px = uav[index].des_px;
+    state_msg.des_py = uav[index].des_py;
+    state_msg.des_pz = uav[index].des_pz;
+    // 3. 期望速度
+    state_msg.des_vx = uav[index].des_vx;
+    state_msg.des_vy = uav[index].des_vy;
+    state_msg.des_vz = uav[index].des_vz;
+    // 4. 当前状态机阶段
+    state_msg.state = uav[index].state;
+    // 5. 能力标志位 (布尔值)
+    state_msg.cap_g = uav[index].cap.g;
+    state_msg.cap_c = uav[index].cap.c;
+    state_msg.cap_u = uav[index].cap.u;
+    state_msg.cap_v = uav[index].cap.v;
+    // 6. 发布
+    des_state_pubs[index].publish(state_msg);
 }
+
 // 6个独立的定时器回调，内部直接调用标准模板
 void execute_mission_001(const ros::TimerEvent &event) { process_mission(0); }
 void execute_mission_002(const ros::TimerEvent &event) { process_mission(1); }
@@ -706,6 +724,13 @@ int main(int argc, char **argv) {
     mission_pubs[3] = nh.advertise<std_msgs::Float32MultiArray>("mission_004",100);
     mission_pubs[4] = nh.advertise<std_msgs::Float32MultiArray>("mission_005",100);
     mission_pubs[5] = nh.advertise<std_msgs::Float32MultiArray>("mission_006",100);
+
+    des_state_pubs[0] = nh.advertise<fcu_core::des_and_state>("/des_state_001", 100);
+    des_state_pubs[1] = nh.advertise<fcu_core::des_and_state>("/des_state_002", 100);
+    des_state_pubs[2] = nh.advertise<fcu_core::des_and_state>("/des_state_003", 100);
+    des_state_pubs[3] = nh.advertise<fcu_core::des_and_state>("/des_state_004", 100);
+    des_state_pubs[4] = nh.advertise<fcu_core::des_and_state>("/des_state_005", 100);
+    des_state_pubs[5] = nh.advertise<fcu_core::des_and_state>("/des_state_006", 100);
 
     ros::Timer timer_mission_001 = nh.createTimer(ros::Duration(0.1),execute_mission_001,false);
     ros::Timer timer_mission_002 = nh.createTimer(ros::Duration(0.1),execute_mission_002,false);
